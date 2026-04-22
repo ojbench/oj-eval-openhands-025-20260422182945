@@ -73,6 +73,26 @@ static double jaccard_bigram_similarity(const vector<string>& a, const vector<st
     return double(inter)/double(uni);
 }
 
+static double jaccard_unigram_similarity(const vector<string>& a, const vector<string>& b){
+    unordered_map<string,int> ca, cb; for(auto &t:a) ca[t]++; for(auto &t:b) cb[t]++;
+    long long inter=0, uni=0; unordered_set<string> keys; keys.reserve(ca.size()+cb.size());
+    for(auto &kv:ca) keys.insert(kv.first); for(auto &kv:cb) keys.insert(kv.first);
+    for(const auto &k: keys){ int x=ca.count(k)?ca[k]:0; int y=cb.count(k)?cb[k]:0; inter += min(x,y); uni += max(x,y); }
+    if (uni==0) return 0.0; return double(inter)/double(uni);
+}
+
+static double structure_similarity(const vector<string>& a, const vector<string>& b){
+    // Compare only parentheses sequence
+    string pa, pb; pa.reserve(a.size()); pb.reserve(b.size());
+    for(const auto &t: a) if(t=="("||t==")") pa.push_back(t[0]);
+    for(const auto &t: b) if(t=="("||t==")") pb.push_back(t[0]);
+    // compute normalized LCS similarity
+    int n=pa.size(), m=pb.size();
+    if(n==0 && m==0) return 1.0; vector<int> dp(m+1,0), prev(m+1,0);
+    for(int i=1;i<=n;++i){ fill(dp.begin(), dp.end(), 0); for(int j=1;j<=m;++j){ if(pa[i-1]==pb[j-1]) dp[j]=prev[j-1]+1; else dp[j]=max(prev[j], dp[j-1]); } swap(dp, prev);}    
+    double lcs = prev[m]; double denom = max(n,m); if(denom==0) return 1.0; return lcs/denom;
+}
+
 // Pretty print tokens with spaces, one expression per line length limit
 static string render_tokens(const vector<string>& toks){
     string out; out.reserve(toks.size()*2);
@@ -133,7 +153,11 @@ int main(){
         }
         auto t1 = normalize_tokens(tokenize(p1));
         auto t2 = normalize_tokens(tokenize(p2));
-        double sim = jaccard_bigram_similarity(t1, t2);
+        // Combine multiple similarity cues
+        double s1 = jaccard_bigram_similarity(t1, t2);
+        double s2 = jaccard_unigram_similarity(t1, t2);
+        double s3 = structure_similarity(t1, t2);
+        double sim = 0.5*s1 + 0.3*s2 + 0.2*s3;
         if (sim < 0) sim = 0; if (sim > 1) sim = 1;
         cout.setf(std::ios::fixed); cout<<setprecision(6)<<sim<<"\n";
         return 0;
