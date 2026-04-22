@@ -141,7 +141,10 @@ int main(){
 
     // Cheat mode: transform program text heuristically
     string prog;
-    for(size_t i=0;i<lines.size();++i){ prog += lines[i]; prog.push_back('\n'); }
+    for(size_t i=0;i<lines.size();++i){
+        if (lines[i] == "endprogram") continue; // ignore terminator if present
+        prog += lines[i]; prog.push_back('\n');
+    }
     string out = transform_program(prog);
     cout<<out;
     return 0;
